@@ -29,12 +29,18 @@ func writeImage(w http.ResponseWriter, img *image.Image) {
 
 func serverHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "url param not found", http.StatusBadRequest)
+		return
+	}
 
-	imgpath, htmlpath := fb2img.CreateImage(url)
-	defer func() {
-		os.Remove(imgpath)
-		os.Remove(htmlpath)
-	}()
+	imgpath, err := fb2img.CreateImage(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer func() { os.Remove(imgpath) }()
 
 	imgbuffer, _ := os.Open(imgpath)
 	defer imgbuffer.Close()
