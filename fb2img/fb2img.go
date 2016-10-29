@@ -3,13 +3,8 @@ package fb2img
 import (
 	"bytes"
 	"html/template"
-	"io/ioutil"
-	"math/rand"
-	"os"
+	"io"
 	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 const fbHTML = `<html><body>
@@ -18,32 +13,21 @@ const fbHTML = `<html><body>
 
 var t = template.Must(template.New("fb").Parse(fbHTML))
 
-func CreateImage(url string) (string, error) {
-	templatebuff := bytes.NewBufferString("")
-	err := t.Execute(templatebuff, url)
-	if err != nil {
-		return "", err
+func CreateImage(url string) ([]byte, error) {
+	html := bytes.NewBufferString("")
+	if err := t.Execute(html, url); err != nil {
+		return nil, err
 	}
 
-	tempstring := randomString()
-	htmlfile := filepath.Join("tmp", tempstring+".html")
-	err = ioutil.WriteFile(htmlfile, templatebuff.Bytes(), 0666)
+	cmd := exec.Command("wkhtmltoimage", "--width", "500", "-", "-")
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer func() { os.Remove(htmlfile) }()
+	defer stdin.Close()
 
-	imgfile := filepath.Join("tmp", tempstring+".jpg")
-	err = exec.Command("wkhtmltoimage", "--height", "500", "--width", "500", htmlfile, imgfile).Run()
-	if err != nil {
-		return "", err
-	}
+	io.Copy(stdin, html)
+	stdin.Close()
 
-	return imgfile, nil
-}
-
-func randomString() string {
-	str := strconv.FormatFloat(rand.Float64(), 'f', 6, 64)
-	str = strings.Replace(str, ".", "", -1)
-	return str
+	return cmd.Output()
 }
