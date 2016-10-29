@@ -19,7 +19,7 @@ func CreateImage(url string) ([]byte, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command("wkhtmltoimage", "-", "-")
+	cmd := exec.Command("wkhtmltoimage", "--width", "500", "-", "-")
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
