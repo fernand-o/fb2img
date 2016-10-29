@@ -3,7 +3,7 @@ package fb2img
 import (
 	"bytes"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -26,19 +26,25 @@ func CreateImage(url string) (string, error) {
 	}
 
 	tempstring := randomString()
-	htmlfile := filepath.Join("tmp", tempstring+".html")
-	err = ioutil.WriteFile(htmlfile, templatebuff.Bytes(), 0666)
-	if err != nil {
-		return "", err
-	}
-	defer func() { os.Remove(htmlfile) }()
 
 	imgfile := filepath.Join("tmp", tempstring+".jpg")
-	err = exec.Command("wkhtmltoimage", "--height", "500", "--width", "500", htmlfile, imgfile).Run()
+	p := exec.Command("wkhtmltoimage", "--height", "500", "--width", "500", "-", imgfile)
+	stdin, err := p.StdinPipe()
 	if err != nil {
 		return "", err
 	}
+	defer stdin.Close()
 
+	if err = p.Start(); err != nil {
+		return "", err
+	}
+	io.Copy(stdin, templatebuff)
+	stdin.Close()
+
+	p.Wait()
+	if _, err := os.Stat(imgfile); os.IsNotExist(err) {
+		return "", err
+	}
 	return imgfile, nil
 }
 
