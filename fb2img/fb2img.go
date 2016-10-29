@@ -2,7 +2,6 @@ package fb2img
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"math/rand"
@@ -13,32 +12,34 @@ import (
 	"strings"
 )
 
-var path, _ = filepath.Abs(filepath.Dir(os.Args[0]))
-var templatepath = path + "\\" + "template.html"
-var htmltemplate, _ = template.ParseFiles(templatepath)
+const fbHTML = `<html><body>
+			<iframe src="https://www.facebook.com/plugins/post.php?href={{ . }}&width=500" height="500" width="500" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowTransparency="true"></iframe>
+	</body></html>`
 
-func CreateImage(url string) (string, string) {
+var t = template.Must(template.New("fb").Parse(fbHTML))
 
+func CreateImage(url string) (string, error) {
 	templatebuff := bytes.NewBufferString("")
-	err := htmltemplate.Execute(templatebuff, url)
+	err := t.Execute(templatebuff, url)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	tempstring := randomString()
-	htmlfile := path + "\\" + tempstring + ".html"
+	htmlfile := filepath.Join("tmp", tempstring+".html")
 	err = ioutil.WriteFile(htmlfile, templatebuff.Bytes(), 0666)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
+	defer func() { os.Remove(htmlfile) }()
 
-	imgfile := path + "\\" + tempstring + ".jpg"
-	err = exec.Command(path+"\\"+"wkhtmltoimage", "--height", "500", "--width", "500", htmlfile, imgfile).Run()
+	imgfile := filepath.Join("tmp", tempstring+".jpg")
+	err = exec.Command("wkhtmltoimage", "--height", "500", "--width", "500", htmlfile, imgfile).Run()
 	if err != nil {
-		fmt.Printf("Error on trying to generate image: %s", err)
+		return "", err
 	}
 
-	return imgfile, htmlfile
+	return imgfile, nil
 }
 
 func randomString() string {
