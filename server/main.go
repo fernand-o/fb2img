@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/fernand-o/fb2img/fb2img"
+	"github.com/fernand-o/fb2img"
 )
 
 func serverHandler(w http.ResponseWriter, r *http.Request) {
